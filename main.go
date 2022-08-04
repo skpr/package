@@ -5,6 +5,7 @@ import (
 
 	"github.com/alecthomas/kingpin"
 	docker "github.com/fsouza/go-dockerclient"
+
 	"github.com/skpr/package/pkg/builder"
 )
 
@@ -23,18 +24,20 @@ func main() {
 	kingpin.Parse()
 
 	params := builder.Params{
-		Writer:   os.Stdout,
-		Registry: *cliRegistry,
-		Version:  *cliVersion,
-		Context:  *cliContext,
-		NoPush:   *cliNoPush,
+		Directory: *cliDirectory,
+		Debug:     *cliDebug,
+		Writer:    os.Stdout,
+		Registry:  *cliRegistry,
+		Version:   *cliVersion,
+		Context:   *cliContext,
+		NoPush:    *cliNoPush,
 		Auth: docker.AuthConfiguration{
 			Username: *cliDockerUser,
 			Password: *cliDockerPass,
 		},
 	}
 
-	_, err := builder.BuildAndPush(params, *cliDirectory, *cliDebug)
+	_, err := builder.BuildAndPush(params)
 	if err != nil {
 		panic(err)
 	}

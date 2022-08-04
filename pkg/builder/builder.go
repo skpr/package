@@ -31,12 +31,14 @@ type Builder struct {
 
 // Params used for building the applications.
 type Params struct {
-	Writer   io.Writer
-	Registry string
-	Version  string
-	Context  string
-	NoPush   bool
-	Auth     docker.AuthConfiguration
+	Directory string
+	Debug     bool
+	Writer    io.Writer
+	Registry  string
+	Version   string
+	Context   string
+	NoPush    bool
+	Auth      docker.AuthConfiguration
 }
 
 const (
@@ -60,7 +62,7 @@ type BuildOutput struct {
 }
 
 // BuildAndPush a packaged set of images.
-func BuildAndPush(params Params, directory string, debug bool) (BuildOutput, error) {
+func BuildAndPush(params Params) (BuildOutput, error) {
 	var output BuildOutput
 
 	// @todo, Consider abstracting this if another registry + credentials pair is required.
@@ -73,12 +75,12 @@ func BuildAndPush(params Params, directory string, debug bool) (BuildOutput, err
 		params.Auth = auth
 	}
 
-	dockerfiles, err := finder.FindDockerfiles(directory)
+	dockerfiles, err := finder.FindDockerfiles(params.Directory)
 	if err != nil {
 		return output, fmt.Errorf("failed to find dockerfiles: %w", err)
 	}
 
-	if debug {
+	if params.Debug {
 		fmt.Println("Found the following dockerfiles:")
 		for key, path := range dockerfiles {
 			fmt.Printf("%-10s %q\n", key, path)
