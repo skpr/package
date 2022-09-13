@@ -3,8 +3,6 @@ package builder
 import (
 	"context"
 	"fmt"
-	"github.com/skpr/package/pkg/color"
-
 	"io"
 	"path/filepath"
 	"strings"
@@ -15,6 +13,7 @@ import (
 	"github.com/segmentio/textio"
 	"golang.org/x/sync/errgroup"
 
+	"github.com/skpr/package/pkg/color"
 	"github.com/skpr/package/pkg/utils/aws/ecr"
 	"github.com/skpr/package/pkg/utils/finder"
 	"github.com/skpr/package/pkg/utils/image"
