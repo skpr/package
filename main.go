@@ -15,6 +15,7 @@ var (
 	cliRegistry   = kingpin.Flag("verbose", "Verbose mode.").String()
 	cliContext    = kingpin.Flag("context", "Path to use as a context for building images.").Default(".").String()
 	cliNoPush     = kingpin.Flag("no-push", "Don't push images to the registry after being built. Used for local debugging.").Bool()
+	cliScan       = kingpin.Flag("scan", "Scan images for vulnerabilities.").Bool()
 	cliDirectory  = kingpin.Flag("directory", "The location of the package directory").Default(".skpr/package").String()
 	cliDebug      = kingpin.Flag("debug", "Show debug information").Bool()
 	cliVersion    = kingpin.Arg("version", "Version of the application which is being packaged").Required().String()
@@ -35,6 +36,7 @@ func main() {
 			Username: *cliDockerUser,
 			Password: *cliDockerPass,
 		},
+		Scan: *cliScan,
 	}
 
 	_, err := builder.BuildAndPush(params)

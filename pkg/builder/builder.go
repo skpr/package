@@ -3,16 +3,18 @@ package builder
 import (
 	"context"
 	"fmt"
+	"github.com/skpr/package/pkg/color"
+
 	"io"
 	"path/filepath"
 	"strings"
 	"time"
 
+	"github.com/aquasecurity/trivy/pkg/commands"
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/segmentio/textio"
 	"golang.org/x/sync/errgroup"
 
-	"github.com/skpr/package/pkg/color"
 	"github.com/skpr/package/pkg/utils/aws/ecr"
 	"github.com/skpr/package/pkg/utils/finder"
 	"github.com/skpr/package/pkg/utils/image"
@@ -39,6 +41,7 @@ type Params struct {
 	Context   string
 	NoPush    bool
 	Auth      docker.AuthConfiguration
+	Scan      bool
 }
 
 const (
@@ -111,6 +114,7 @@ func BuildAndPush(params Params) (BuildOutput, error) {
 
 // Build the images.
 func (b *Builder) Build(dockerfiles finder.Dockerfiles, params Params) (BuildOutput, error) {
+
 	resp := BuildOutput{
 		Images: make(map[string]string),
 	}
@@ -183,6 +187,10 @@ func (b *Builder) Build(dockerfiles finder.Dockerfiles, params Params) (BuildOut
 		return resp, err
 	}
 
+	if params.Scan {
+		Scan(params, dockerfiles)
+	}
+
 	if params.NoPush {
 		return resp, nil
 	}
@@ -231,6 +239,36 @@ func (b *Builder) Build(dockerfiles finder.Dockerfiles, params Params) (BuildOut
 	}
 
 	return resp, nil
+}
+
+// Scan a packaged set of images.
+func Scan(params Params, dockerfiles finder.Dockerfiles) error {
+
+	app := commands.NewApp(params.Version)
+	app.SetOut(io.Discard)
+	app.SetOut(params.Writer)
+
+	for imageName := range dockerfiles {
+		// Compile image is only for building, so we don't push.
+		if imageName == ImageNameCompile {
+			continue
+		}
+
+		tag := image.Tag(params.Version, imageName)
+		ref := fmt.Sprintf("%s:%s", params.Registry, tag)
+
+		fmt.Fprintf(params.Writer, "Scanning %s for vulnerabilities...\n", ref)
+		app.SetArgs([]string{"image", ref, "--security-checks", "vuln"})
+
+		start := time.Now()
+		err := app.Execute()
+		fmt.Fprintf(params.Writer, "Scanning of %s completed in %s\n", ref, time.Since(start).Round(time.Second))
+		if err != nil {
+			return err
+		}
+
+	}
+	return nil
 }
 
 // Helper function to prefix all output for a stream.
