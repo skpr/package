@@ -113,7 +113,6 @@ func BuildAndPush(params Params) (BuildOutput, error) {
 
 // Build the images.
 func (b *Builder) Build(dockerfiles finder.Dockerfiles, params Params) (BuildOutput, error) {
-
 	resp := BuildOutput{
 		Images: make(map[string]string),
 	}
