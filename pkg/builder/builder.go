@@ -47,6 +47,8 @@ const (
 
 	// BuildArgCompileImage is used for referencing the compile image.
 	BuildArgCompileImage = "COMPILE_IMAGE"
+	// BuildArgVersion is used for providing the version identifier of the application.
+	BuildArgVersion = "SKPR_VERSION"
 )
 
 // NewBuilder creates a new Builder.
@@ -120,33 +122,45 @@ func (b *Builder) Build(dockerfiles finder.Dockerfiles, params Params) (BuildOut
 		return resp, fmt.Errorf("%q is a required dockerfile", ImageNameCompile)
 	}
 
+	args := []docker.BuildArg{
+		{
+			Name:  BuildArgVersion,
+			Value: params.Version,
+		},
+	}
+
 	// We build the compile image first, as it is the base image for other images.
 	compileBuild := docker.BuildImageOptions{
 		Name:         image.Name(params.Registry, params.Version, ImageNameCompile),
 		Dockerfile:   compileDockerfile,
 		ContextDir:   params.Context,
 		OutputStream: prefix(params.Writer, ImageNameCompile),
+		BuildArgs:    args,
 	}
 
 	// We need to build the 'compile' image first.
 	fmt.Fprintf(params.Writer, "Building image: %s\n", compileBuild.Name)
 	start := time.Now()
+
 	err := b.dockerClient.BuildImage(compileBuild)
 	if err != nil {
 		return resp, err
 	}
+
 	fmt.Fprintf(params.Writer, "Built compile image in %s\n", time.Since(start).Round(time.Second))
 
 	// Remove compile from list of dockerfiles.
 	delete(dockerfiles, ImageNameCompile)
 
-	args := []docker.BuildArg{
-		{
-			Name:  BuildArgCompileImage,
-			Value: image.Name(params.Registry, params.Version, ImageNameCompile),
-		},
-	}
+	// Adds compile image identifier to the runtime images as an arg.
+	// That allows runtime images to copy over the compiled code.
+	args = append(args, docker.BuildArg{
+		Name:  BuildArgCompileImage,
+		Value: image.Name(params.Registry, params.Version, ImageNameCompile),
+	})
+
 	var builds []docker.BuildImageOptions
+
 	for imageName, dockerfile := range dockerfiles {
 		builds = append(builds, docker.BuildImageOptions{
 			Name:         image.Name(params.Registry, params.Version, imageName),
